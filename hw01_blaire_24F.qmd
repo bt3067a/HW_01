@@ -1,0 +1,384 @@
+---
+title: "DATA-413/613 HW 01"
+author: "Blaire Trueax"
+number-sections: true
+format:
+  html:
+    embed-resources: true
+---
+
+# Admin Elements {.unnumbered}
+
+Review the Syllabus on Canvas and answer the following questions:
+
+I, *Blaire Trueax* have:
+
+1.  Ensured my Canvas Profile has a photo of me (head and shoulders).
+2.  Reviewed the syllabus and the associated policies on the following date: ***8/29/2024***.
+3.  Reviewed the American University policies on academic integrity and I agree to comply with them and the additional guidance in the syllabus for this course.
+4. Reviewed the General Instructions for Assignments on the following date: ***8/29/2024***.
+5. Confirmed my information in the Student Info spreadsheet on Canvas Collaborations is correct.
+6. Updated my version of R and RStudio and the {tidyverse} packages for this course.
+
+# Analysis Elements {.unnumbered}
+
+0. Load the {tidyverse} and use functions from {tidyverse} when possible.
+
+```{r}
+#| eval: true
+#| message: false
+library(tidyverse)
+```
+
+# College Scorecard
+
+The data folder contains `college_scorecard_extract_2024-06-13_UG.csv`, a *subset* of data in the [College Scorecard](https://collegescorecard.ed.gov/data/) as of June 13, 2024. This data set contains information on undergraduate college cohorts in the United States. The data dictionary is in the `data` folder. The variables include: (see HTML file)
+
+1.  Load the data.
+
+a.  Load `college_scorecard_extract_2024-06-13_UG.csv` (in the `data` directory) using one call to a {readr} function with a relative path and save the resulting tibble.
+    -   Note, this data uses "NULL" for some missing values. Use an argument of the {readr} function to convert "NULL" to `NA` during the loading of the data. Do not not suppress messages or warnings.
+    
+```{r }
+library(readr)
+data<-read.csv("C:/Users/bltru/OneDrive - american.edu/CSC-DATA/DATA-413/HW_1/college_scorecard_extract_2024-06-13_413.csv",na="NULL")
+#View(data)
+```
+
+b.  Use `glimpse()` to examine the data.
+
+```{r }
+glimpse(data)
+```
+
+2.  If you used the default settings for reading in the data, multiple variables are probably type/class character when the data suggests they should be numeric.
+
+a.  Which ones are they?
+
+AGE_ENTRY, FEMALE, FIRST_GEN, GRAD_DEBT_MDN, PCT_ASIAN, PCT_BLACK, PCT_HISPANIC, PCT_WHITE
+
+
+b.  Look at the data. Why were these columns read in as type character instead of double?
+
+In some cases, the inputted value for these variables were "PrivacySuppressed"
+
+
+3.  Reload the data with a {readr} function and use an argument to convert the offending entries to `NA` so the variables are automatically read in as type double. You should have 42 variables of type double.
+
+
+```{r }
+data <- read_csv("C:/Users/bltru/OneDrive - american.edu/CSC-DATA/DATA-413/HW_1/college_scorecard_extract_2024-06-13_413.csv", 
+                 na = c("NULL", "PrivacySuppressed"))
+head(data,5)
+```
+
+
+4.  How is average faculty salary associated with the median earnings of working students ten years after initial enrollment?
+
+a.  Use {ggplot2} to create an appropriate plot to assess for a relationship (with `AVGFACSAL` as the explanatory X variable). Use a {ggplot2} function argument to reduce over-plotting. Add the default smoother with `se = FALSE`. Facet on `ICLEVEL`.
+
+```{r }
+library(ggplot2)
+
+ggplot(data, aes(x = AVGFACSAL, y = MD_EARN_WNE_P10)) +
+  geom_point(alpha = 0.5) +  # reducing over-plotting
+  geom_smooth(se = FALSE) +  # default smoother
+  facet_wrap(~ ICLEVEL) +  # facet by ICLEVEL (level of a individual contributor, eg level of hierarchy in workplace)
+  labs(x = "Average Faculty Salary", y = "Median Earnings of Working Students 10 Years After Enrollment", 
+       title = "Average Faculty Salary vs Median Earnings of Working Students by ICLEVEL")
+```
+
+b.  Interpret the plots about the potential relationships.
+
+The initial plots show a positive association between average faculty salary and median earnings of students (10 years after enrollment). In other words, as the average faculty salary increases, so does the median earnings of students. For ICLEVEL=2, there is no clear association, the data is grouped together with some points straying away. AVGFACSAL not recorded for ICLEVEL=3. 
+
+
+c.  Why did `geom_smooth()` chose the `mgcv::gam()` smoothing method.
+
+GAM stands for General Additive Models, which is a flexbile method for showing more complex relationships between variables. This method is the default because it does not assume the parametric form of the relationship, and can adapt to non-linear data.
+
+
+d.  Why is there no `ICLEVEL` 3 plot, or, if there is a plot, why is there no data in the `ICLEVEL` 3 plot?
+
+AVGFACSAL not recorded for ICLEVEL=3, data is 'NA'. 
+
+
+e.  Use `lm()` to run a linear model of the relationship **for only those schools with ICLEVEL 1** and save the results.
+
+```{r }
+library(dplyr)
+
+ICLEVEL1<-data%>%
+  filter(ICLEVEL==1)
+
+#View(ICLEVEL1)
+```
+
+```{r }
+linear<-lm(MD_EARN_WNE_P10~AVGFACSAL,data=ICLEVEL1)
+```
+
+f.  Use `summary()` on the results.
+
+```{r }
+summary(linear)
+```
+
+g.  Interpret the results of the model based on the coefficient for `AVGFACSAL` and the model $p$-value and adjusted $r$-squared value.
+
+The coefficient for the `AVGFACSAL` is positive, meaning for every additional dollar increase in AVGFACSAL, the median earnings of students 10 years after enrollment are expected to increase $4.312. The model p-value is significant, which means AVGFACSAL has a significant effect on median earnings of students. The adjusted R-squared value, 0.525, means that %52.5 of the variance in average earnings of students is explained by average faculty salaries.
+
+
+h.  Given the adjusted $r$-squared value, what do you recommend to try to better predict average earnings of working students ten years after initial enrollment at ICLEVEL 1 schools?
+
+To improve predicting average earnings of students, we could add more predictors to better explain the variance in our response. In addition, there may be complex relationships between one or more variables, prompting us to include interaction terms that help explain variance in median earnings of students 10 years after enrollment.
+
+
+
+
+5.  How is the level of the institution associated with the median earnings of students ten years after enrollment?
+
+a.  Reproduce the following plot to explore this relationship. Use `ggthemes::theme_fivethirtyeight()`. Use a chunk option to set the figure width at 7.
+
+```{r }
+head(data,5)
+```
+
+
+
+```{r plot-median-earnings, fig.width=7}
+library(ggthemes)
+library(ggplot2)
+
+
+ggplot(data, aes(x = as.factor(ICLEVEL), y = log(MD_EARN_WNE_P10))) +
+  geom_boxplot()+labs(title = "Log of Median Earnings by Level of Institution",
+                      subtitle="Working Students, 10 years after Enrollment",
+       x = "Institution Level",
+       y = "Median Earnings (10 years after enrollment)")+
+  theme_fivethirtyeight()
+```
+
+
+b.  Interpret the plot to answer the question.
+
+Looking at the plot, it seems that students who when to an institution whose ICLEVEL=1 have the most median earnings 10 years after enrollment. The median earnings continue to go down for ICLEVEL=2 and then ICLEVEL=3. ICLEVEL=2 has a few straying outliers.
+
+c.  Use `aov()` to test if all of the institution levels have the same true mean of logged median earnings of working students ten years after enrollment.
+
+```{r }
+#View(data)
+data<-data%>%
+  mutate(log_medianearn=log(data$MD_EARN_WNE_P10))
+
+aov<-aov(log_medianearn~ICLEVEL,data=data)
+```
+
+
+d.  Use `broom::tidy()` to show the results. Interpret the results
+
+```{r }
+library(broom)
+
+tidy<-broom::tidy(aov)
+print(tidy)
+```
+
+The very small p-value means that there are significant differences between the means of logged median earnings across different institution levels.
+
+
+e.  Why would we look at the log of mean earnings instead of the un-logged values?
+
+When we log a value, it can help with creating normally distributed data and producing a linear relationship. When we log the mean earnings, it reduces skewness, outliers, and non-linearity, helping us interpret the data easier.
+
+
+
+
+6.  Median Earnings and Percentage of Women Undergraduates
+
+a.  Create the following plot as close as you can.
+
+```{r }
+ggplot(ICLEVEL1, aes(x = FEMALE, y = log(MD_EARN_WNE_P10)))+
+  geom_point()+labs(title = "Log of Median Earnings by Percentage Women Undergraduates",
+                    subtitle="10 years after enrollment at Level 1 Institutions",
+       x = "Percent Enrollment of Women Undergraduates",
+       y = "Median Earnings (10 years after enrollment)")+
+  geom_smooth()
+```
+
+b.  Pose the question you think the plot might answer and interpret the plot to answer the question. What are the implications for school administrators or for applicants?
+
+
+
+c.  Show the `INSTNM`, `INSTURL`, `RELAFFIL`, and `UGDS_WOMEN` for only schools with either 0% or 100% for `UGDS_WOMEN` sorted by ascending `UGDS_WOMEN` then `INSTNM`. There should be 39 schools. What do you notice?
+    -   Note: `RELAFFIL` of 30 is Roman Catholic, 66 is Presbyterian Church (USA), 71 is United Methodist, and 80 is Jewish.
+
+
+d.  To minimize extreme value effects, filter to choose schools where `UGDS_WOMEN` is greater than 10% and less than 90% and reproduce the plot.
+    -   Extra Credit: Add points and labels for American University (colored red) and the Massachusetts Institute of Technology (colored green) such that the points will automatically adjust with new data.
+
+
+
+e.  What do you notice? What questions does this plot raise for you?
+
+
+
+f.  Filter out the schools with `UGDS_WOMEN` less than 10% or greater than 90% and use `lm()` to run a linear model and use `summary()` on the results
+
+
+
+g.   Interpret the results compared to the plot using the sign of the coefficient for `UGDS_WOMEN`, and the model $p$-value and adjusted R-squared.
+
+
+
+
+
+7.  Median Earnings and Race/Ethnicity
+
+a.  Create the following plot as close as you can. 
+    - Hint: consider what shape the data should be in to generate the plot. 
+    - Use `geom_vline(xintercept = .36, color = "red", lty = 3)` to add the vertical line  representing the maximum 90^th^ percentile across all categories but White.
+
+
+
+b.  Pose the question you think the plot might answer and interpret the plot to answer the question.
+
+
+
+c.  What are the ethical implications of using either the linear smoother or the non-linear smoother in these plots to "prove a point"? Which would you recommend and why?
+
+
+
+
+
+8.  Rankings Based on Student Debt and Annual Cost to Attend (Debt/Cost Ratio (DCR))
+
+a.  Filter the data to only l`ICLEVEL` 1 with no `NA`s for `COSTT4_A` or `GRAD_DEBT_MDN`. Also remove any satellite campuses using `filter(str_detect(OPEID, "......00"))`. That should leave 1,701 rows.
+
+
+
+b.  Add a variable called `DCR` based on the ratio of median earnings 10 years after enrollment to median graduation debt at graduation.
+
+
+
+c.  Use a {dplyr} integer ranking function to compute a ranking using `DCR`. Break any ties using the smallest value and leaving a gap to the next untied DCR such that if two schools are tied for 4th, they are each ranked 4 and the next school is 6. This is similar to many sports rankings.
+
+
+
+d.  Identify the top 5 best (lowest DCR should be rank value 1) and the bottom 5 worst (largest DCR should have largest rank number). Show only the rank, name, DCR, cost to attend, median debt at graduation, and median earnings 10 years after enrollment.
+
+
+
+e.  What is American University's rank and DCR? Show only the rank, name, DCR, cost to attend, median debt at graduation, and median earnings 10 years after enrollment.
+
+
+
+f.  Extra Credit: Reproduce the following plot so the *AU line and number of institutions automatically adjust as new data is entered*. Use `ggthemes::clean()`.
+
+
+
+
+
+# World Bank Data
+
+The World Bank provides loans to countries with the goal of reducing poverty. The data frames in the data folder were taken from the public data repositories of the [World Bank Group DataBank](https://databank.worldbank.org/home). The fertility, life expectancy, and population data are from its [World Development Indicators (WDI)](https://databank.worldbank.org/source/world-development-indicators) as of 1 August 2024.
+
+-   `wb_country_income_classification_2023.csv`: Contains information on the countries in the data set. Also includes totals for the regions (sets of countries) and the world. Source is [World Bank Country and Lending Groups](https://datahelpdesk.worldbank.org/knowledgebase/articles/906519-world-bank-country-and-lending-groups). The variables are: see HTML file
+
+1.  Use a relative path and a {readr} function to load each of these four files into its own tibble. *Be sure to look at the data after loading to ensure it loaded as expected, without problems, and fix any problems using {readr} function arguments.* Consider using the `problems()` function to identify the locations of any problems.
+    - Note: `wb_country_income_classification_2023` has a row of all `NA`s between the countries and the collective economies such as regions. The argument `skip_empty_rows` defaults to `TRUE` but, since there are commas in the file, the row is not counted as "empty."
+    - Note: Some countries have `NA` for missing data for the early years but have values in the later years which is not a problem. 
+    - There should be a maximum of 267 rows for the country data and 266 rows for each of the WDI data files.
+
+
+
+
+2. Use `anti_join()` to show which codes are in the country data but not in the population data and which country codes are in population data but not in the country data.  What do you notice?
+
+
+
+
+3.  These data are messy. The observational units in `fert`, `life`, and `pop` are locations in space-time (e.g., Aruba in 2020). Recall that "tidy" data should have one observational unit per row.
+
+-   Using only two function calls for each data frame, tidy each data frame to have only four variables by:
+    1.  Removing the `Indicator Name` and `Indicator Code` columns.
+    2.  Using a {tidyr} function to tidy the tibble, and, by using an argument of the function and a {readr} function ensure the variable for `year` is a numeric. Recall, {readr} parsing functions can "fix" many parsing errors automatically. There should be no need to use a `mutate()` function.
+    3. Given the many `NA`s, remove them using an argument of the {tidyr} function.
+    4.  Save each tidy tibble to a new name. 
+    5. You should have four columns in each with 16,124, 16,137, and 16,930 rows based on the different numbers of `NA`s in the original tibbles. The `INX` country code had all `NA`s for each year so it should be gone as well.
+- Show the first 6 rows for each tibble.
+
+
+
+
+4.  Combine tibbles.
+
+a. Using a {dplyr} join function, *join* the three WDI tidy tibbles you just created into a single tibble. Start with the population data and then join fertility data and then join the life_expectancy data. 
+    - It should have six columns and 16,930 rows.
+
+
+
+b. Then use a {dplyr} join function to add the data from the country tibble in a way that does not add any countries from the country data that have no data in the joined tibble. Save the resulting tibble to a new name and show the structure of the saved tibble.
+    -   The new tibble should now have 10 columns and 16,930 rows.
+    -   It should include the fertility rate, population, and life expectancy for each year as well as the `Economy`,`Region`, `IncomeGroup`, and `LendingGroup`.
+
+
+
+5. Show just `Country Name` and `Economy` for the countries (rows with a non-`NA` value for `Region`) where the values in `Country Name` and `Economy` do not match each other. There should be five. What do you notice about they do not match?
+
+
+
+
+
+6.  Fertility vs Life Expectancy over Time by Country and Region
+
+a. Make a single scatterplot with the following attributes:
+    1.  Use `drop_na()` to remove all `NA`s for the variables of interest and show fertility rate (Y) vs life expectancy (X) for Countries (i.e., rows where `Region` is not ``NA`).
+    2.  Color-code by `Region` and indicate the country population by size.
+    3.  Include only the years 1960, 1980, 2000, and 2020.
+    4.  Facet by these years.
+    5. Use with `scale_color_viridis_d()`.
+    6.  Your final plot should look like the below (Each element of the plot is graded).
+
+
+b.  Interpret the plot in one sentence that address each variable.
+
+
+
+
+
+
+7.  Regional Population
+
+a.  Use only Countries (`Region` is not `NA`) to calculate the total population for each region for each year.
+
+
+
+b.  Make a line plot of calculated total population (Y) versus year (X), color-coding by region and using a *log scale* for Y. Use (`ggthemes::scale_color_colorblind`).
+    - Your final plot should look like the below 
+
+
+
+c.  Interpret the plot in one sentence to identify the two fastest growing regions.
+
+
+
+
+8. Percentage population growth for the countries from 1960 to 2020 (Extra Credit)
+
+a. Make a box plot of the percentage population growth for the countries from 1960 to 2020 (the population in 2020 compared to 1960) with the following attributes.
+    1.  Use code to automatically order the Regions on the $y$-axis in **increasing** order of Region's total 1960 population.
+    2.  For any countries with negative growth, set it to .001.
+    3.  Add a red line at 100%.
+
+
+b.  Interpret the plot in one sentence to compare the percentage growth with the previous plot.
+
+
+
+
+
+
+
+

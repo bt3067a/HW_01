@@ -7,8 +7,6 @@ format:
     embed-resources: true
 ---
 
-# Admin Elements {.unnumbered}
-
 Review the Syllabus on Canvas and answer the following questions:
 
 I, *Blaire Trueax* have:
@@ -205,6 +203,7 @@ ggplot(ICLEVEL1, aes(x = FEMALE, y = log(MD_EARN_WNE_P10)))+
        x = "Percent Enrollment of Women Undergraduates",
        y = "Median Earnings (10 years after enrollment)")+
   geom_smooth()
+
 ```
 
 b.  Pose the question you think the plot might answer and interpret the plot to answer the question. What are the implications for school administrators or for applicants?
